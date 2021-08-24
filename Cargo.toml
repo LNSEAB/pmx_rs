@@ -1,9 +1,10 @@
 [package]
-name = "pmx"
-version = "0.1.0"
+name = "pmx_rs"
+version = "0.0.1"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "PMX file reader"
+license = "MIT"
+readme = "README.md"
 
 [dependencies]
 thiserror = "1.0.26"

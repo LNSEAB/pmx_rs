@@ -6,7 +6,7 @@ pub enum Error {
     #[error("unsupported version")]
     UnsupportedVersion,
     #[error("invalid data: {}", .0)]
-    InvalidData(&'static str),
+    InvalidData(String),
     #[error("io error: {}", .0)]
     Io(std::io::Error),
 }
@@ -217,24 +217,24 @@ where
         let v = self.read_u8()?;
         match v {
             1 | 2 | 4 => Ok(v),
-            _ => Err(Error::InvalidData("read_index_size")),
+            _ => Err(Error::InvalidData("read_index_size".into())),
         }
     }
 
     fn header(&mut self) -> Result<Header, Error> {
         let magic = self.read_bin::<4>()?;
         if magic != [b'P', b'M', b'X', b' '] {
-            return Err(Error::InvalidData("magic number"));
+            return Err(Error::InvalidData("magic number".into()));
         }
         let version = self.read_f32()?;
         let bytes = self.read_u8()?;
         if bytes != 8 {
-            return Err(Error::InvalidData("header::bytes"));
+            return Err(Error::InvalidData("header::bytes".into()));
         }
         let encoding = match self.read_u8()? {
             0 => Encoding::Utf16,
             1 => Encoding::Utf8,
-            _ => return Err(Error::InvalidData("header::encoding")),
+            _ => return Err(Error::InvalidData("header::encoding".into())),
         };
         Ok(Header {
             version,
@@ -294,7 +294,7 @@ where
                 r0: self.read_vec3()?,
                 r1: self.read_vec3()?,
             }),
-            _ => return Err(Error::InvalidData("vertex::weight")),
+            _ => return Err(Error::InvalidData("vertex::weight".into())),
         };
         let edge_ratio = self.read_f32()?;
         Ok(Vertex {
@@ -314,7 +314,13 @@ where
 
     fn faces(&mut self) -> Result<Vec<u32>, Error> {
         let len = self.read_u32()?;
-        (0..len).map(|_| Ok(self.read_u32()?)).collect()
+        (0..len)
+            .map(|_| {
+                Ok(self
+                    .read_vertex_index()?
+                    .ok_or(Error::InvalidData("faces".into()))? as u32)
+            })
+            .collect()
     }
 
     fn textures(&mut self) -> Result<Vec<PathBuf>, Error> {
@@ -344,17 +350,17 @@ where
             1 => SphereMode::Mul,
             2 => SphereMode::Add,
             3 => SphereMode::SubTexture,
-            _ => return Err(Error::InvalidData("material::sphere_mode")),
+            n => return Err(Error::InvalidData(format!("material::sphere_mode({})", n))),
         };
         let toon = match self.read_u8()? {
             0 => Toon::Texture(self.read_texture_index()?),
             1 => Toon::Shared(self.read_u8()? as _),
-            _ => return Err(Error::InvalidData("material::toon")),
+            _ => return Err(Error::InvalidData("material::toon".into())),
         };
         let memo = self.read_string()?;
         let index_count = self.read_u32()?;
         if index_count % 3 != 0 {
-            return Err(Error::InvalidData("material::index_count"));
+            return Err(Error::InvalidData("material::index_count".into()));
         }
         Ok(Material {
             name,
@@ -394,7 +400,7 @@ where
         let connected_to = match flags & 0x0001 {
             0 => ConnectedTo::Offset(self.read_vec3()?),
             1 => ConnectedTo::Bone(self.read_bone_index()?),
-            _ => return Err(Error::InvalidData("bone::connected_to")),
+            _ => return Err(Error::InvalidData("bone::connected_to".into())),
         };
         let rotatable = flags & 0x0002 == 0x0002;
         let translatable = flags & 0x0004 == 0x0004;
@@ -499,7 +505,7 @@ where
             2 => Panel::Eye,
             3 => Panel::Mouth,
             4 => Panel::Other,
-            _ => return Err(Error::InvalidData("morph::panel")),
+            _ => return Err(Error::InvalidData("morph::panel".into())),
         };
         let kind_value = self.read_u8()?;
         let len = self.read_u32()?;
@@ -564,7 +570,7 @@ where
                             op: match self.read_u8()? {
                                 0 => morph::MaterialOp::Mul,
                                 1 => morph::MaterialOp::Add,
-                                _ => return Err(Error::InvalidData("morph::Material::op")),
+                                _ => return Err(Error::InvalidData("morph::Material::op".into())),
                             },
                             diffuse: self.read_vec4()?,
                             specular: self.read_vec3()?,
@@ -579,7 +585,7 @@ where
                     })
                     .collect::<Result<_, Error>>()?,
             ),
-            _ => return Err(Error::InvalidData("morph::kind")),
+            _ => return Err(Error::InvalidData("morph::kind".into())),
         };
         Ok(Morph {
             name,
@@ -605,7 +611,7 @@ where
                 Ok(match t {
                     0 => DisplayElement::Bone(self.read_bone_index()?),
                     1 => DisplayElement::Morph(self.read_morph_index()?),
-                    _ => return Err(Error::InvalidData("display_group::elements")),
+                    _ => return Err(Error::InvalidData("display_group::elements".into())),
                 })
             })
             .collect::<Result<_, Error>>()?;
@@ -632,7 +638,7 @@ where
             0 => rigid::Shape::Sphere,
             1 => rigid::Shape::Box,
             2 => rigid::Shape::Capsule,
-            _ => return Err(Error::InvalidData("rigid::shape")),
+            _ => return Err(Error::InvalidData("rigid::shape".into())),
         };
         let size = self.read_vec3()?;
         let position = self.read_vec3()?;
@@ -646,7 +652,7 @@ where
             0 => rigid::Method::Static,
             1 => rigid::Method::Dynamic,
             2 => rigid::Method::DynamicWithBone,
-            _ => return Err(Error::InvalidData("rigid::method")),
+            _ => return Err(Error::InvalidData("rigid::method".into())),
         };
         Ok(Rigid {
             name,
@@ -677,7 +683,7 @@ where
         let name_en = self.read_string()?;
         let t = self.read_u8()?;
         if t != 0 {
-            return Err(Error::InvalidData("joint::type"));
+            return Err(Error::InvalidData("joint::type".into()));
         }
         let rigids = [self.read_rigid_index()?, self.read_rigid_index()?];
         let position = self.read_vec3()?;

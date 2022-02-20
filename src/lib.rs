@@ -329,3 +329,62 @@ pub fn read<T: std::io::Read>(reader: T) -> Result<Pmx, reader::Error> {
     let mut reader = reader::Reader::new(reader);
     reader.read()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn read_pmx() -> Pmx {
+        let file = std::fs::File::open("resource/Alicia/Alicia_solid.pmx").unwrap();
+        let reader = std::io::BufReader::new(file);
+        read(reader).unwrap()
+    }
+
+    #[test]
+    fn model_name() {
+        let pmx = read_pmx();
+        assert!(pmx.model_info.name == "アリシア・ソリッド");
+    }
+
+    #[test]
+    fn vertex_size() {
+        let pmx = read_pmx();
+        assert!(pmx.vertices.len() == 22311);
+    }
+
+    #[test]
+    fn face_size() {
+        let pmx = read_pmx();
+        assert!(pmx.faces.len() == 95598);
+    }
+
+    #[test]
+    fn material_size() {
+        let pmx = read_pmx();
+        assert!(pmx.materials.len() == 22);
+    }
+
+    #[test]
+    fn bone_size() {
+        let pmx = read_pmx();
+        assert!(pmx.bones.len() == 150);
+    }
+
+    #[test]
+    fn rigid_size() {
+        let pmx = read_pmx();
+        assert!(pmx.rigids.len() == 79);
+    }
+
+    #[test]
+    fn joint_size() {
+        let pmx = read_pmx();
+        assert!(pmx.joints.len() == 53);
+    }
+
+    #[test]
+    fn last_joint() {
+        let pmx = read_pmx();
+        assert!(pmx.joints[52].name == "リボン右");
+    }
+}

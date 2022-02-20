@@ -1,10 +1,10 @@
 [package]
 name = "pmx_rs"
 version = "0.0.1"
-edition = "2018"
+edition = "2021"
 description = "PMX file reader"
 license = "MIT"
 readme = "README.md"
 
 [dependencies]
-thiserror = "1.0.26"
+thiserror = "1.0.30"
